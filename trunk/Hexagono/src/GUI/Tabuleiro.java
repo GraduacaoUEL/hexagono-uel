@@ -311,7 +311,7 @@ public Tabuleiro() {
         for (int i = 1; i < 18; i++) {
             for (int j = 1; j < 18; j++) {
                 if (pecas[i][j].getDesenha() == true) {
-                    if (pecas[i][j].Contains((e.getX() - 10), (e.getY()) - 20)) {
+                    if (pecas[i][j].Contains((e.getX() ), (e.getY()) )) {
 
                         if (pecas[i][j].getPlayer() == jogador) {
                             marcada++;
