@@ -92,9 +92,6 @@ public class Server
     //fecha os fluxos e o socket
     private void closeConnection()
     {
-        displayMessage("\nTerminating connection\n");
-        setTextFieldEditable(false); //desativa enterField
-
         try
         {
             output.close();//fecha o fluxo de saída
@@ -114,7 +111,6 @@ public class Server
         {
             output.writeObject("SERVER>>> " + message);
             output.flush();//esvazia a saída para o cliente
-            displayMessage("\nSERVER>>> " + message);
         }
         catch(IOException iOException)
         {
