@@ -1,4 +1,4 @@
-package GUI;
+package GUI.Server;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;

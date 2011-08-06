@@ -1,4 +1,4 @@
-package GUI;
+package GUI.Cliente;
 
 import java.awt.Color;
 import java.awt.Point;
