@@ -1,9 +1,5 @@
 package GUI.Cliente;
 
-
-// Server.java
-//Configura uma classe Server que receberá uma conexão de um cliente, envia
-// uma string ao cliente e fecha a conexão.
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -20,18 +16,30 @@ import javax.swing.JTextField;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 
-public class Chat extends JPanel implements Runnable
+public class Chat extends JPanel implements Runnable 
 {
-    private JTextField enterField; //insere a mensagem do usuário
-    private JTextArea displayArea; //exibe informações para o usuário
-    private ObjectOutputStream output; //gera fluxo de saída para o cliente
-    private ObjectInputStream input; //gera fluxo de saída a partir do cliente
-    private ServerSocket server; //socket de servidor
-    private Socket connection; // conexão com o cliente
-    private String chatServer; //servidor de host para esse aplicativo
-    private int counter = 1; //contador de número de conexões
-    private Socket client; //socket para comunicação com o servidor
-    private String message = ""; //mensagem do servidor
+    //Campo onde o usuário digita a mensagem que vai ser enviada
+    private JTextField enterField;
+    
+    //Campo maior onde aparece o histórico de mensagens enviadas e recebidas
+    private JTextArea displayArea;
+    
+    //Pacote com os dados prontos para sair
+    private ObjectOutputStream output;
+    
+    //Pacote com os dados prontos para entrar
+    private ObjectInputStream input;
+   
+    //Armazena o nome do servidor ao qual esse chat vai se conectar (ex: 127.0.0.1)
+    private String chatServer;
+    
+    //Contém o socket da criado para a conexão com o servidor
+    private Socket client;
+    
+    //Campo auxiliar para manipular mensagens do buffer e mensagens que vão para a tela
+    private String message = "";
+    
+    //Scroll para a janela de mensagens
     private JScrollPane scroll;
 
     //Configura a GUI
@@ -42,14 +50,24 @@ public class Chat extends JPanel implements Runnable
         chatServer = host; //configura o servidor ao qual esse cliente se conecta
 
         
-        displayArea = new JTextArea(); //cria displayArea
+        //Compo onde vão aparecer mensagens enviadas e recebidas
+        displayArea = new JTextArea();
+        
         displayArea.setRows(10);
         displayArea.setColumns(80);
+        
+        //Força quebra de linha no displayArea
         displayArea.setLineWrap(true);
+        
         
         scroll = new JScrollPane(displayArea);
         scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        
+        /*
+         * Posição onde vai ficar o scrool, canto superior esquerdo fica em x = 0, y = 0.
+         * No eixo x tem comprimento de 500 pixels e no eixo y tem altura 160 pixels.... 
+         */
         scroll.setBounds(0, 0, 500, 160);
         
         add(scroll);
@@ -59,13 +77,14 @@ public class Chat extends JPanel implements Runnable
         enterField.setEditable(false);
         enterField.setBounds(0, 170, 300, 25);
         
+        //Responde a um enter informando que ser quer enviar a mensagem
         enterField.addActionListener(
                 new ActionListener()
                 {
                     //envia a mensagem ao cliente
                     public void actionPerformed(ActionEvent event)
                     {
-                        sendData(event.getActionCommand());
+                        enviaDados(event.getActionCommand());
                         enterField.setText("");
                     }
                 }
@@ -75,17 +94,17 @@ public class Chat extends JPanel implements Runnable
     }
 
     //conecta-se ao servidor e processa as mensagens a partir do servidor
-    public void runClient()
+    private void runClient()
     {
-        try//conecta-se ao servidor, obtém fluxos, processa a conexão
+        try
         {
-            connectToServer(); //cria um socket para fazer a conexão
-            getStreams(); //obtém os fluxos de entrada e saída
-            processConnection(); //processa a conexão
+            conectaNoServidor();
+            obtemDadosDeEntradaESaida();
+            manipulaDadosNaJanela(); //processa a conexão
         }
         catch(EOFException eofException)
         {
-            displayMessage("\nClient terminated connection");
+            exibeMensagens("\nO Cliente encerrou a conexão");
         }
         catch(IOException ioException)
         {
@@ -93,25 +112,25 @@ public class Chat extends JPanel implements Runnable
         }
         finally
         {
-            closeConnection(); //fecha a conexão
+            fechaConexao();
         }
     }
 
     //conecta-se ao servidor
-    private void connectToServer() throws IOException
+    private void conectaNoServidor() throws IOException
     {
-        displayMessage("Attempting connection\n");
+        exibeMensagens("Attempting connection\n");
 
         //cria Socket para fazer a conexão ao servidor
         client = new Socket(InetAddress.getByName(chatServer), 12345);
 
-        //exibe informações sobre a conexão
-        displayMessage("Connected to: " +
+        //Mostra mensagem no textArea de que a conexão foi feita com sucesso
+        exibeMensagens("Conectado a " +
                 client.getInetAddress().getHostName());
     }
 
     //obtém fluxos para enviar e receber dados
-    private void getStreams() throws IOException
+    private void obtemDadosDeEntradaESaida() throws IOException
     {
         //configura o fluxo de saída para objetos
         output = new ObjectOutputStream(client.getOutputStream());
@@ -120,11 +139,11 @@ public class Chat extends JPanel implements Runnable
         //configura o fluxo de entrada para objetos
         input = new ObjectInputStream(client.getInputStream());
 
-        displayMessage("\nGot I/O streams\n");
+        //exibeMensagens("\nGot I/O streams\n");
     }
 
     //processa a conexão com o servidor
-    private void processConnection() throws IOException
+    private void manipulaDadosNaJanela() throws IOException
     {
         //ativa enterField de modo que o usuário cliente possa enviar mensagens
         setTextFieldEditable(true);
@@ -134,20 +153,20 @@ public class Chat extends JPanel implements Runnable
             try//lê e exibe a mensagem
             {
                 message = (String)input.readObject(); //lê uma nova mensagem
-                displayMessage("\n" + message); //exibe a mensagem
+                exibeMensagens("\n" + message); //exibe a mensagem
             }
             catch(ClassNotFoundException classNotFoundException)
             {
-                displayMessage("\nUnknown object type received");
+                exibeMensagens("\nUnknown object type received");
             }
 
-        }while(!message.equals("SERVER>>> TERMINATE"));
+        }while(!message.equals("SERVER>>> exit"));
     }
 
     //fecha os fluxos e o socket
-    private void closeConnection()
+    private void fechaConexao()
     {
-        displayMessage("\nClosing connection");
+        exibeMensagens("\nClosing connection");
         setTextFieldEditable(false); //desativa enterField
 
         try
@@ -163,22 +182,22 @@ public class Chat extends JPanel implements Runnable
     }
 
     //envia mensagem ao servidor
-    private void sendData(String message)
+    private void enviaDados(String message)
     {
         try//envia o objeto ao servidor
         {
             output.writeObject("CLIENT>>> " + message);
             output.flush(); //esvazia os dados para saída
-            displayMessage("\nCLIENT>>> " + message);
+            exibeMensagens("\nCLIENT>>> " + message);
         }
         catch(IOException ioException)
         {
-            displayArea.append("\nError writing object");
+            displayArea.append("\nErro ao escrever");
         }
     }
 
     //manipula a displayArea na thread de despacho de eventos
-    private void displayMessage(final String messageToDisplay)
+    private void exibeMensagens(final String messageToDisplay)
     {
         SwingUtilities.invokeLater(
                 new Runnable()
@@ -206,7 +225,8 @@ public class Chat extends JPanel implements Runnable
     }
 
     @Override
-    public void run() {
+    public void run()//Sem esse método a thread do Main não funciona
+    {
         //throw new UnsupportedOperationException("Not supported yet.");
         runClient();
     }
