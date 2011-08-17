@@ -41,7 +41,10 @@ public class Main
         painel = new JPanel();
         
         tabuleiro = new Tabuleiro();
-        batePapo = new Chat("Verde");
+
+        batePapo = new Chat("127.0.0.1");
+        Thread bp = new Thread(batePapo);
+        bp.start();
         
         painel.addMouseListener(tabuleiro);
         painel.setLayout(null);

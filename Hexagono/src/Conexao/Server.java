@@ -7,7 +7,7 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class Server
+public class Server implements Runnable
 {
     private ObjectOutputStream output; //gera fluxo de saída para o cliente
     private ObjectInputStream input; //gera fluxo de saída a partir do cliente
@@ -105,7 +105,7 @@ public class Server
     }
 
     //envia a mensagem ao cliente
-    private void sendData(String message)
+    public void sendData(String message)
     {
         try//envia o objeto ao cliente
         {
@@ -117,5 +117,12 @@ public class Server
             
         }
     }
+
+    @Override
+    public void run() {
+        //throw new UnsupportedOperationException("Not supported yet.");
+        runServer();
+    }
+
 
 }
