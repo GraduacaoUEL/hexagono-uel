@@ -29,19 +29,27 @@ public class Main
         janela.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         janela.setResizable(false);
 
+
+        
         Main hexagono = new Main();
         hexagono.painel.setOpaque(true);
 
         janela.setContentPane(hexagono.painel);
 
         janela.setVisible(true);
+        
     }
 
     public Main() {
         painel = new JPanel();
-        
+                
         tabuleiro = new Tabuleiro();
-        batePapo = new Chat("Verde");
+        
+        batePapo = new Chat();
+        
+        Thread bp = new Thread(batePapo);
+        bp.start();
+
         
         painel.addMouseListener(tabuleiro);
         painel.setLayout(null);
@@ -51,6 +59,6 @@ public class Main
         
         tabuleiro.setBounds(0, 0, 700, 400);
         batePapo.setBounds(50, 401, 700, 500);       
+        
     } 
 }
-
