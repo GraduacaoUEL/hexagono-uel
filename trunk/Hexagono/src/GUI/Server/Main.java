@@ -44,14 +44,15 @@ public class Main
         painel = new JPanel();
                 
         tabuleiro = new Tabuleiro();
+        Thread tb = new Thread(tabuleiro);
+        tb.start();
         
         batePapo = new Chat();
-        
         Thread bp = new Thread(batePapo);
         bp.start();
 
-        
-        painel.addMouseListener(tabuleiro);
+       
+ 
         painel.setLayout(null);
         
         painel.add(tabuleiro);
