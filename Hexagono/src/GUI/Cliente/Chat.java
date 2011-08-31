@@ -227,7 +227,6 @@ public class Chat extends JPanel implements Runnable
     @Override
     public void run()//Sem esse método a thread do Main não funciona
     {
-        //throw new UnsupportedOperationException("Not supported yet.");
         runClient();
     }
 }
