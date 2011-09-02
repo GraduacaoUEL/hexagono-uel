@@ -40,7 +40,7 @@ public class Main
     public Main() {
         painel = new JPanel();
         
-        tabuleiro = new Tabuleiro();
+        tabuleiro = new Tabuleiro("127.0.0.1");
 
         Thread tb = new Thread(tabuleiro);
         tb.start();

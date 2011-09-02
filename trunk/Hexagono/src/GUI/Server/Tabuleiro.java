@@ -1,16 +1,21 @@
 package GUI.Server;
 
 import java.awt.Graphics;
-
 import java.awt.Polygon;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.BufferOverflowException;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -22,11 +27,13 @@ public class Tabuleiro extends JPanel implements Runnable {
     Peca[][] pecas = new Peca[18][18];
     int jogador;
     Boolean marcada;
-    private ObjectOutputStream output;
-    private ObjectInputStream input;
+    private PrintStream output;
+    private BufferedReader input;
     private ServerSocket server;
     private Socket connection;
     private JLabel debug;
+    String mensagem="";
+
     public Tabuleiro() {
         jogador = 1;//random
 
@@ -35,7 +42,7 @@ public class Tabuleiro extends JPanel implements Runnable {
         debug.setBounds(0, 0, 100, 50);
         add(debug);
 
-        
+
         desenhaTabuleiro();
         eventoMouse evento = new eventoMouse();
         addMouseListener(evento);
@@ -312,43 +319,48 @@ public class Tabuleiro extends JPanel implements Runnable {
 
     }
 
+    public void movePeca(int x, int y) {
+
+        int marcada = 0;
+        for (int i = 1; i < 18; i++) {
+            for (int j = 1; j < 18; j++) {
+                if (pecas[i][j].getDesenha() == true) {  //verifica se a peça existe
+                    if (pecas[i][j].Contains(x, y)) { //verifica se o clique esta dentro de um hexagono
+
+                        if (pecas[i][j].getPlayer() == jogador) { //verifica se a peça é do jogador
+                            marcada = VerificaQuantidadeDePecasMarcadas(marcada); //Desmarca caso clique em outra peça
+
+                            pecas[i][j].setNivel(4);  //nivel 4 siginifica uma peca marcada
+
+                            VerificaOPrimeiroNivel(i, j); //pinta o primeiro nivel da peca marcada
+                            VerificaOSegundoNivel(i, j);  //pinta o segundo nivel da peca marca
+                        }
+
+                        if (pecas[i][j].getNivel() == 1) { //caso ele mova a peca marcada para o primeiro nivel
+                            MovePecaParaoPrimeiroNivelEConverte(i, j);
+
+                        }
+                        if (pecas[i][j].getNivel() == 2) {//caso ele mova a peca marcada para o segundo nivel
+                            MovePecaParaoSegundoNivelEConverte(i, j);
+
+                        }
+                        if (pecas[i][j].getNivel() == 0) { //caso clique em um local que naum tem peças
+                            LimpaNiveis();
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+
     public class eventoMouse extends MouseAdapter {
 
         @Override
         public void mouseClicked(MouseEvent e) {
 
-
-
-            int marcada = 0;
-            for (int i = 1; i < 18; i++) {
-                for (int j = 1; j < 18; j++) {
-                    if (pecas[i][j].getDesenha() == true) {  //verifica se a peça existe
-                        if (pecas[i][j].Contains((e.getX()), (e.getY()))) { //verifica se o clique esta dentro de um hexagono
-
-                            if (pecas[i][j].getPlayer() == jogador) { //verifica se a peça é do jogador
-                                marcada = VerificaQuantidadeDePecasMarcadas(marcada); //Desmarca caso clique em outra peça
-
-                                pecas[i][j].setNivel(4);  //nivel 4 siginifica uma peca marcada
-
-                                VerificaOPrimeiroNivel(i, j); //pinta o primeiro nivel da peca marcada
-                                VerificaOSegundoNivel(i, j);  //pinta o segundo nivel da peca marca
-                            }
-
-                            if (pecas[i][j].getNivel() == 1) { //caso ele mova a peca marcada para o primeiro nivel
-                                MovePecaParaoPrimeiroNivelEConverte(i, j);
-
-                            }
-                            if (pecas[i][j].getNivel() == 2) {//caso ele mova a peca marcada para o segundo nivel
-                                MovePecaParaoSegundoNivelEConverte(i, j);
-
-                            }
-                            if (pecas[i][j].getNivel() == 0) { //caso clique em um local que naum tem peças
-                                LimpaNiveis();
-                            }
-
-                        }
-                    }
-                }
+            if (jogador == 2) {
+                movePeca(e.getX(), e.getY());
             }
             enviaDados(e.getX() + ":" + e.getY());
             repaint();
@@ -356,8 +368,7 @@ public class Tabuleiro extends JPanel implements Runnable {
     }
 
     private void runServer() {
-        try
-        {
+        try {
             server = new ServerSocket(12347, 1); //cria ServerSocket
 
             try {
@@ -366,6 +377,7 @@ public class Tabuleiro extends JPanel implements Runnable {
                 manipulaDadosNaJanela();
             } catch (EOFException eofException) {
                 statusDaConexao("Falha na conexão");
+                System.exit(0);
             } finally {
                 fechaConexao();
             }
@@ -377,24 +389,35 @@ public class Tabuleiro extends JPanel implements Runnable {
     private void esperaPorConexao() throws IOException {
         connection = server.accept();
         statusDaConexao("Conectado");
-   }
-    
-    private void obtemDadosDeEntradaESaida() throws IOException {
-        output = new ObjectOutputStream(connection.getOutputStream());
-        output.flush();
+    }
 
-        input = new ObjectInputStream(connection.getInputStream());
+    private void obtemDadosDeEntradaESaida() throws IOException {
+        output = new PrintStream(connection.getOutputStream());
+        //output.flush();
+        input = new BufferedReader(new InputStreamReader(connection.getInputStream()));
     }
 
     private void manipulaDadosNaJanela() throws IOException {
-        String mensagem = "";
         do//processa as mensagens enviadas pelo cliente
         {
             try//lê e exibe a mensagem
             {
-                mensagem = (String) input.readObject();
-            } catch (ClassNotFoundException classNotFoundException) {
+                String coordenadas;
+                coordenadas = (String) input.readLine();
+                System.out.println("String " + coordenadas);
+                String[] TodasCoordenadas = coordenadas.split(":");
+                int x = Integer.parseInt(TodasCoordenadas[0]);
+                int y = Integer.parseInt(TodasCoordenadas[1]);
+                System.out.println("x" + x + "   " + " y" + y);
+
+                if (jogador == 1) {
+                    movePeca(x, y);
+                    repaint();
+                }
+            } catch (IOException i) {
+                fechaConexao();
                 JOptionPane.showMessageDialog(null, "A mensagem recebida veio com problemas.");
+                
             }
 
         } while (!mensagem.equals("exit"));
@@ -410,27 +433,23 @@ public class Tabuleiro extends JPanel implements Runnable {
             ioException.printStackTrace();
         }
     }
-    
-        private void statusDaConexao(final String status)
-    {
+
+    private void statusDaConexao(final String status) {
         SwingUtilities.invokeLater(
-            new Runnable()
-            {
-                public void run() //configura a editabilidade do enterField
-                {
-                    debug.setText(status);
-                }
-            }
-        );
+                new Runnable() {
+
+                    public void run() //configura a editabilidade do enterField
+                    {
+                        debug.setText(status);
+                    }
+                });
     }
 
-    
     public void enviaDados(String mensagem) {
-        try
-        {
-            output.writeObject(mensagem);
+        try {
+            output.println(mensagem);
             output.flush();
-        } catch (IOException iOException) {
+        } catch (BufferOverflowException iOException) {
             JOptionPane.showMessageDialog(null, "\nErro ao escrever mensagem...");
         }
     }

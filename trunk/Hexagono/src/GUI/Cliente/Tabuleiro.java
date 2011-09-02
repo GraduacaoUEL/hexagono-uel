@@ -8,18 +8,19 @@ package GUI.Cliente;
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
 import java.awt.Graphics;
 
 import java.awt.Polygon;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.BufferOverflowException;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -31,23 +32,23 @@ public class Tabuleiro extends JPanel implements Runnable {
     Peca[][] pecas = new Peca[18][18];
     int jogador;
     Boolean marcada;
-
-    private ObjectOutputStream output;
-    private ObjectInputStream input;
+    private PrintStream output;
+    private BufferedReader input;
     private String chatServer;
     private Socket client;
     private String message = "";
     private JLabel debug;
 
-    
-    public Tabuleiro() {
+    public Tabuleiro(String tabuleiroServer) {
+        
+        this.chatServer = tabuleiroServer;
         jogador = 1;//random
         debug = new JLabel();
         debug.setText("Desconectado");
         debug.setBounds(0, 0, 100, 50);
         add(debug);
-        
-        
+
+
         desenhaTabuleiro();
         eventoMouse evento = new eventoMouse();
         addMouseListener(evento);
@@ -327,160 +328,150 @@ public class Tabuleiro extends JPanel implements Runnable {
 
     }
 
-    public class eventoMouse extends MouseAdapter {
+    public void movePeca(int x, int y) {
 
-        
-        
-        @Override
-        public void mouseClicked(MouseEvent e) {
-            
-            
-            
-            int marcada = 0;
-            for (int i = 1; i < 18; i++) {
-                for (int j = 1; j < 18; j++) {
-                    if (pecas[i][j].getDesenha() == true) {  //verifica se a peça existe
-                        if (pecas[i][j].Contains((e.getX()), (e.getY()))) { //verifica se o clique esta dentro de um hexagono
+        int marcada = 0;
+        for (int i = 1; i < 18; i++) {
+            for (int j = 1; j < 18; j++) {
+                if (pecas[i][j].getDesenha() == true) {  //verifica se a peça existe
+                    if (pecas[i][j].Contains(x, y)) { //verifica se o clique esta dentro de um hexagono
 
-                            if (pecas[i][j].getPlayer() == jogador) { //verifica se a peça é do jogador
-                                marcada = VerificaQuantidadeDePecasMarcadas(marcada); //Desmarca caso clique em outra peça
+                        if (pecas[i][j].getPlayer() == jogador) { //verifica se a peça é do jogador
+                            marcada = VerificaQuantidadeDePecasMarcadas(marcada); //Desmarca caso clique em outra peça
 
-                                pecas[i][j].setNivel(4);  //nivel 4 siginifica uma peca marcada
+                            pecas[i][j].setNivel(4);  //nivel 4 siginifica uma peca marcada
 
-                                VerificaOPrimeiroNivel(i, j); //pinta o primeiro nivel da peca marcada
-                                VerificaOSegundoNivel(i, j);  //pinta o segundo nivel da peca marca
-                            }
+                            VerificaOPrimeiroNivel(i, j); //pinta o primeiro nivel da peca marcada
+                            VerificaOSegundoNivel(i, j);  //pinta o segundo nivel da peca marca
+                        }
 
-                            if (pecas[i][j].getNivel() == 1) { //caso ele mova a peca marcada para o primeiro nivel
-                                MovePecaParaoPrimeiroNivelEConverte(i, j);
-
-                            }
-                            if (pecas[i][j].getNivel() == 2) {//caso ele mova a peca marcada para o segundo nivel
-                                MovePecaParaoSegundoNivelEConverte(i, j);
-
-                            }
-                            if (pecas[i][j].getNivel() == 0) { //caso clique em um local que naum tem peças
-                                LimpaNiveis();
-                            }
+                        if (pecas[i][j].getNivel() == 1) { //caso ele mova a peca marcada para o primeiro nivel
+                            MovePecaParaoPrimeiroNivelEConverte(i, j);
 
                         }
+                        if (pecas[i][j].getNivel() == 2) {//caso ele mova a peca marcada para o segundo nivel
+                            MovePecaParaoSegundoNivelEConverte(i, j);
+
+                        }
+                        if (pecas[i][j].getNivel() == 0) { //caso clique em um local que naum tem peças
+                            LimpaNiveis();
+                        }
+
                     }
                 }
             }
+        }
+    }
+
+    public class eventoMouse extends MouseAdapter {
+
+        @Override
+        public void mouseClicked(MouseEvent e) {
+
+
+            if (jogador == 1) {
+                movePeca(e.getX(), e.getY());
+            }
+            enviaDados(e.getX() + ":" + e.getY());
+
             repaint();
-         //   enviaDados(e.getX() + ":" + e.getY());
-         
+            
         }
     }
 
     //conecta-se ao servidor e processa as mensagens a partir do servidor
-    private void runClient()
-    {
-        try
-        {
+    private void runClient() {
+        try {
             conectaNoServidor();
             obtemDadosDeEntradaESaida();
             manipulaDadosNaJanela();
-        }
-        catch(EOFException eofException)
-        {
+        } catch (EOFException eofException) {
             JOptionPane.showMessageDialog(null, "Erro na conexão do lado cliente");
+            System.exit(0);
             //exibeMensagens("\nO Cliente encerrou a conexão");
-        }
-        catch(IOException ioException)
-        {
+        } catch (IOException ioException) {
             ioException.printStackTrace();
-        }
-        finally
-        {
+        } finally {
             fechaConexao();
         }
     }
 
     //conecta-se ao servidor
-    private void conectaNoServidor() throws IOException
-    {
+    private void conectaNoServidor() throws IOException {
         client = new Socket(InetAddress.getByName(chatServer), 12347);
-        exibeMensagens("oi");
     }
 
-    private void obtemDadosDeEntradaESaida() throws IOException
-    {
+    private void obtemDadosDeEntradaESaida() throws IOException {
+
+        output = new PrintStream(client.getOutputStream());
+        //output.flush();
+        input = new BufferedReader(new InputStreamReader(client.getInputStream()));
         
-        output = new ObjectOutputStream(client.getOutputStream());
-        output.flush();
 
-        input = new ObjectInputStream(client.getInputStream());
     }
 
-    private void manipulaDadosNaJanela() throws IOException
-    {
-        do
-        {
-            try
-            {
-                message = (String)input.readObject();
-            }
-            catch(ClassNotFoundException classNotFoundException)
-            {
+    private void manipulaDadosNaJanela() throws IOException {
+        do {
+            try {
+                String coordenadas;
+                coordenadas = (String) input.readLine();
+                System.out.println("String " + coordenadas);
+                String[] TodasCoordenadas = coordenadas.split(":");
+                int x = Integer.parseInt(TodasCoordenadas[0]);
+                int y = Integer.parseInt(TodasCoordenadas[1]);
+                System.out.println("x" + x + "   " + " y" + y);
+
+                if (jogador == 2) {
+                    movePeca(x, y);
+                    repaint();
+                }
+            } catch (IOException i) {
                 //exibeMensagens("\nUnknown object type received");
             }
 
-        }while(!message.equals("exit"));
+        } while (!message.equals("exit"));
     }
 
-    private void fechaConexao()
-    {
-        try
-        {
+    private void fechaConexao() {
+        try {
             output.close();
             input.close();
             client.close();
-        }
-        catch(IOException ioException)
-        {
+        } catch (IOException ioException) {
             ioException.printStackTrace();
         }
     }
 
-    private void enviaDados(String message)
-    {
-        try
-        {
-            output.writeObject("CLIENT>>> " + message);
+    private void enviaDados(String message) {
+        try {
+            output.println(message);
             output.flush(); //esvazia os dados para saída
-            exibeMensagens("\nCLIENT>>> " + message);
-        }
-        catch(IOException ioException)
-        {
+            
+        } catch (BufferOverflowException ioException) {
             //displayArea.append("\nErro ao escrever");
         }
     }
 
-    private void exibeMensagens(final String messageToDisplay)
-    {
+    private void exibeMensagens(final String messageToDisplay) {
         SwingUtilities.invokeLater(
-                new Runnable()
-                {
+                new Runnable() {
+
                     public void run()//atualiza a displayArea
                     {
-                          debug.setText("Conectado");
+                        debug.setText("Conectado");
                     }
-                }
-        );
+                });
     }
 
     //manipula o enterField na thread de despacho de eventos
-    private void setTextFieldEditable(final boolean editable)
-    {
-       SwingUtilities.invokeLater(
-                new Runnable()
-                {
+    private void setTextFieldEditable(final boolean editable) {
+        SwingUtilities.invokeLater(
+                new Runnable() {
+
                     public void run()//atualiza a displayArea
                     {
                     }
-                }
-        );
+                });
     }
 
     @Override
