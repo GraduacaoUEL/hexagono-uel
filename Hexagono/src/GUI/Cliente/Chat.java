@@ -2,13 +2,19 @@ package GUI.Cliente;
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.net.InetAddress;
+import java.nio.BufferOverflowException;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -25,10 +31,10 @@ public class Chat extends JPanel implements Runnable
     private JTextArea displayArea;
     
     //Pacote com os dados prontos para sair
-    private ObjectOutputStream output;
+    private PrintStream output;
     
     //Pacote com os dados prontos para entrar
-    private ObjectInputStream input;
+    private BufferedReader input;
    
     //Armazena o nome do servidor ao qual esse chat vai se conectar (ex: 127.0.0.1)
     private String chatServer;
@@ -105,6 +111,7 @@ public class Chat extends JPanel implements Runnable
         catch(EOFException eofException)
         {
             exibeMensagens("\nO Cliente encerrou a conexão");
+            System.exit(0);
         }
         catch(IOException ioException)
         {
@@ -133,11 +140,11 @@ public class Chat extends JPanel implements Runnable
     private void obtemDadosDeEntradaESaida() throws IOException
     {
         //configura o fluxo de saída para objetos
-        output = new ObjectOutputStream(client.getOutputStream());
-        output.flush();//esvazia buffer de saída para enviar as informações de cabeçalho
+        output = new PrintStream(client.getOutputStream());
+        //output.flush();//esvazia buffer de saída para enviar as informações de cabeçalho
 
         //configura o fluxo de entrada para objetos
-        input = new ObjectInputStream(client.getInputStream());
+        input = new BufferedReader(new InputStreamReader(client.getInputStream()));
 
         //exibeMensagens("\nGot I/O streams\n");
     }
@@ -152,10 +159,10 @@ public class Chat extends JPanel implements Runnable
         {
             try//lê e exibe a mensagem
             {
-                message = (String)input.readObject(); //lê uma nova mensagem
+                message = (String)input.readLine(); //lê uma nova mensagem
                 exibeMensagens("\n" + message); //exibe a mensagem
             }
-            catch(ClassNotFoundException classNotFoundException)
+            catch(IOException e)
             {
                 exibeMensagens("\nUnknown object type received");
             }
@@ -186,11 +193,11 @@ public class Chat extends JPanel implements Runnable
     {
         try//envia o objeto ao servidor
         {
-            output.writeObject("CLIENT>>> " + message);
+            output.println("CLIENT>>> " + message);
             output.flush(); //esvazia os dados para saída
             exibeMensagens("\nCLIENT>>> " + message);
         }
-        catch(IOException ioException)
+        catch(BufferOverflowException e)
         {
             displayArea.append("\nErro ao escrever");
         }
