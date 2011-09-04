@@ -1,15 +1,19 @@
 package GUI.Cliente;
 
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 public class Main
 {
     JPanel painel;
-
     Tabuleiro tabuleiro;
     Chat batePapo;
 
+    private String ipDoServidor;
+    private int portaDoServidor;
+    private String nomeDoJogador;
+    
     public static void main(String[] args) {
         javax.swing.SwingUtilities.invokeLater(
             new Runnable() {
@@ -24,7 +28,7 @@ public class Main
 
     private static void exibir() 
     {
-        JFrame janela = new JFrame("Hexagono");
+        JFrame janela = new JFrame("Cliente");
         janela.setSize(650, 650);
         janela.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         janela.setResizable(false);
@@ -39,14 +43,18 @@ public class Main
 
     public Main() {
         painel = new JPanel();
+                
+        ipDoServidor = JOptionPane.showInputDialog("Informe o ip do servidor");
+        portaDoServidor =  Integer.parseInt(JOptionPane.showInputDialog("Informe a porta do servidor"));
+        nomeDoJogador = JOptionPane.showInputDialog("Informe o nome do jogador");
         
-        tabuleiro = new Tabuleiro("127.0.0.1");
+        tabuleiro = new Tabuleiro(ipDoServidor, portaDoServidor, nomeDoJogador);
 
         Thread tb = new Thread(tabuleiro);
         tb.start();
 
         
-        batePapo = new Chat("127.0.0.1");
+        batePapo = new Chat(ipDoServidor, ++portaDoServidor, nomeDoJogador);
         Thread bp = new Thread(batePapo);
         bp.start();
         
@@ -59,4 +67,3 @@ public class Main
         batePapo.setBounds(50, 401, 700, 500);       
     } 
 }
-
