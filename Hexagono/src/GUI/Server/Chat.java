@@ -6,17 +6,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.net.SocketException;
 import java.nio.BufferUnderflowException;
-import javax.print.PrintException;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -33,11 +26,15 @@ public class Chat extends JPanel implements Runnable
     private ServerSocket server;
     private Socket connection;
     private JScrollPane scroll;
+    private int portaDoServidor;
+    private String nomeDoJogador;
 
-    public Chat()
+    public Chat(int portaDoServidor, String nomeDoJogador)
     {
         setLayout(null);
 
+        this.portaDoServidor = portaDoServidor;
+        this.nomeDoJogador = nomeDoJogador;
         
         displayArea = new JTextArea();
         displayArea.setRows(10);
@@ -74,7 +71,7 @@ public class Chat extends JPanel implements Runnable
     {
         try
         {
-            server = new ServerSocket(12345, 1);
+            server = new ServerSocket(this.portaDoServidor, 1);
 
             while(true)
             {
@@ -87,7 +84,6 @@ public class Chat extends JPanel implements Runnable
                catch(EOFException eofException)
                {
                    exibeMensagens("\nServidor encerrou a conexão.");
-                   System.exit(0);
                }
                finally
                {
@@ -101,59 +97,45 @@ public class Chat extends JPanel implements Runnable
         }
     }
 
-    //espera que a conexão chegue e então exibe informações sobre a conexão
     private void esperaPorConexao() throws IOException
     {
         exibeMensagens("Esperando por conexão...\n");
-        
         connection = server.accept();
-        
-        exibeMensagens("Connection received from: " +
-                connection.getInetAddress().getHostName());
+        exibeMensagens("Conexão estabelecida com: " + connection.getInetAddress().getHostName());
     }
 
     private void obtemDadosDeEntradaESaida() throws IOException
     {
         output = new PrintStream(connection.getOutputStream());
-        
-        //output.flush();
-
-        //configura o fluxo de entrada para objetos
-        
         input = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-
     }
 
-    //processa a conexão com o cliente
     private void manipulaDadosNaJanela() throws IOException
     {
+        boolean tudoOk = true;
         String mensagem = "Conexão efetuada com sucesso...";
-        enviaDados(mensagem); //envia uma mensagem de conexão bem-sucedida
-
-        //ativa enterField de modo que o usuário do servidor possa enviar mensagens
+        enviaDados(mensagem);
         setTextFieldEditable(true);
 
-        do//processa as mensagens enviadas pelo cliente
+        do
         {
-            try//lê e exibe a mensagem
+            try
             {
                 mensagem = (String) input.readLine();
                 exibeMensagens("\n" + mensagem); //exibe a mensagem
             }
             catch(IOException e)
             {
+                tudoOk = false;
                 exibeMensagens("\nA mensagem recebida veio com problemas.");
             }
 
-        }while(!mensagem.equals("CLIENT>>> exit"));
+        }while(tudoOk);
     }
 
-    //fecha os fluxos e o socket
     private void fechaConexao()
     {
         exibeMensagens("\nEncerrando conexão\n");
-        
-        //Desabilita enterField
         setTextFieldEditable(false);
 
         try
@@ -168,28 +150,26 @@ public class Chat extends JPanel implements Runnable
         }
     }
 
-    //envia a mensagem ao cliente
     private void enviaDados(String mensagem)
     {
-        try//envia o objeto ao cliente
+        try
         {
-            output.println(mensagem);
-            output.flush();//esvazia a saída para o cliente
-            exibeMensagens("\nSERVER>>> " + mensagem);
+            output.println(this.nomeDoJogador + ": " + mensagem);
+            output.flush();
+            exibeMensagens("\n" + this.nomeDoJogador + ": " + mensagem);
         }
         catch(BufferUnderflowException o)
         {
-            displayArea.append("\nErro ao escrever mensagem...");
+            displayArea.append("\nErro ao enviar dados");
         }
     }
 
-    //Manipula a displayArea na thread de despacho de eventos
     private void exibeMensagens(final String mensagemToDisplay)
     {
         SwingUtilities.invokeLater(
                 new Runnable()
                 {
-                    public void run()//atualiza a displayArea
+                    public void run()
                     {
                         displayArea.append(mensagemToDisplay);
                     }
@@ -197,13 +177,12 @@ public class Chat extends JPanel implements Runnable
           );
     }
 
-    //manipula o enterField na thread de despacho de eventos
     private void setTextFieldEditable(final boolean editable)
     {
         SwingUtilities.invokeLater(
             new Runnable()
             {
-                public void run() //configura a editabilidade do enterField
+                public void run()
                 {
                     enterField.setEditable(editable);
                 }

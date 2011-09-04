@@ -1,15 +1,20 @@
 package GUI.Server;
 
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 public class Main
 {
-    JPanel painel;
+    private JPanel painel;
+    private Tabuleiro tabuleiro;
+    private Chat batePapo;
+    
+    private int portaDoServidor;
+    private final String nomeDoJogador;
 
-    Tabuleiro tabuleiro;
-    Chat batePapo;
-
+    
+    
     public static void main(String[] args) {
         javax.swing.SwingUtilities.invokeLater(
             new Runnable() {
@@ -24,7 +29,7 @@ public class Main
 
     private static void exibir() 
     {
-        JFrame janela = new JFrame("Hexagono");
+        JFrame janela = new JFrame("Servidor");
         janela.setSize(650, 650);
         janela.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         janela.setResizable(false);
@@ -42,19 +47,19 @@ public class Main
 
     public Main() {
         painel = new JPanel();
+        
+        portaDoServidor =  Integer.parseInt(JOptionPane.showInputDialog("Informe a porta do servidor"));
+        nomeDoJogador = JOptionPane.showInputDialog("Informe o nome do jogador");
                 
-        tabuleiro = new Tabuleiro();
+        tabuleiro = new Tabuleiro(portaDoServidor, nomeDoJogador);
         Thread tb = new Thread(tabuleiro);
         tb.start();
         
-        batePapo = new Chat();
+        batePapo = new Chat(++portaDoServidor, nomeDoJogador);
         Thread bp = new Thread(batePapo);
         bp.start();
-
-       
  
         painel.setLayout(null);
-        
         painel.add(tabuleiro);
         painel.add(batePapo);
         
